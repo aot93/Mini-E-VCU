@@ -109,9 +109,9 @@ ADC *adc = new ADC();
 #define ISO_IN2 3  //START
 #define ISO_IN3 4  //Brake
 #define ISO_IN4 5  //REV
-#define ISO_IN5 26 // IGNITION
-#define ISO_IN6 27 // MAP 2 ECO
-#define ISO_IN7 32 // MAP 3 SPORT
+#define ISO_IN5 26 // MAP 2 ECO
+#define ISO_IN6 27 // MAP 3 SPORT
+#define ISO_IN7 32 // IGNITION
 #define ISO_IN8 21 // PP Detect
 
 #define POT_A 41 //POT A
@@ -221,9 +221,9 @@ int torqueIncrement = EEPROM.read(11);                       //used for default 
 uint8_t setTpsLow = 0;
 uint8_t setTpsHigh = 0;
 
-uint8_t active_map;
-uint8_t map2;
-uint8_t map3;
+uint8_t active_map = 1;   //Active Pedal map
+uint8_t map2;         //Eco Map
+uint8_t map3;         //Sport MAp
 
 //Setup the peddal map arrays..
 
@@ -270,20 +270,20 @@ const int pedal_map_two[21][22] = {
     /*1000*/ {-50, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
     /*1250*/ {-70, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
     /*1500*/ {-90, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*2000*/ {-110, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*2500*/ {-130, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*3000*/ {-150, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*3500*/ {-150, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*4000*/ {-150, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*4500*/ {-150, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*5000*/ {-160, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*5500*/ {-180, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*6000*/ {-200, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*6500*/ {-200, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*7000*/ {-225, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*7500*/ {-250, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*8000*/ {-300, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
-    /*10000*/ {-300, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*2000*/ {-110, 0, 0, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*2500*/ {-130, 0, 0, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*3000*/ {-150, 0, 0, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*3500*/ {-150, 0, 0, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*4000*/ {-150, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*4500*/ {-150, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*5000*/ {-160, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*5500*/ {-180, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*6000*/ {-200, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*6500*/ {-200, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*7000*/ {-225, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*7500*/ {-250, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*8000*/ {-300, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
+    /*10000*/ {-300, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
 };
 
 const int pedal_map_three[21][22] = {
@@ -377,12 +377,12 @@ void setup()
 
   //Setup ADC
 
-  adc->adc0->setAveraging(32);                                    // set number of averages
+  adc->adc0->setAveraging(16);                                    // set number of averages
   adc->adc0->setResolution(16);                                   // set bits of resolution
   adc->adc0->setConversionSpeed(ADC_CONVERSION_SPEED::MED_SPEED); // change the conversion speed
   adc->adc0->setSamplingSpeed(ADC_SAMPLING_SPEED::MED_SPEED);     // change the sampling speed
 
-  adc->adc1->setAveraging(32);                                    // set number of averages
+  adc->adc1->setAveraging(16);                                    // set number of averages
   adc->adc1->setResolution(16);                                   // set bits of resolution
   adc->adc1->setConversionSpeed(ADC_CONVERSION_SPEED::MED_SPEED); // change the conversion speed
   adc->adc1->setSamplingSpeed(ADC_SAMPLING_SPEED::MED_SPEED);     // change the sampling speed
@@ -432,8 +432,8 @@ void setup()
 
   //Watch Dog setup
   WDT_timings_t config;
-  config.trigger = 1; /* in seconds, 0->128 */
-  config.timeout = 5; /* in seconds, 0->128 */
+  config.trigger = 1; //in seconds, 0->128
+  config.timeout = 5; //in seconds, 0->128 
   config.callback = wdtCallback;
   wdt.begin(config);
 
@@ -455,8 +455,8 @@ void loop()
   Can2.events();
   Can3.events(); //Currently this only send.
 
-  dashComms();
-  tempCheck();
+  dashComms();  
+  tempCheck();  
   stateHandler();
   readPins();
 
@@ -838,9 +838,9 @@ void readPins()
   start = digitalRead(ISO_IN2);
   brake_pedal = digitalRead(ISO_IN3);
   dir_REV = digitalRead(ISO_IN4);
-  ignition = digitalRead(ISO_IN5);
-  map2 = digitalRead(ISO_IN6);
-  map3 = digitalRead(ISO_IN7);
+  map2 = digitalRead(ISO_IN5);
+  map3 = digitalRead(ISO_IN6);
+  ignition = digitalRead(ISO_IN7);
   ppDetect = digitalRead(ISO_IN8);
 }
 
@@ -1274,6 +1274,8 @@ void showInfo()
   Serial.println();
   Serial.print("VCU Staus: ");
   Serial.print(VCUstatus);
+  Serial.print( "Active MAp:");
+  Serial.print(active_map);
   Serial.print("  BMS Status: ");
   Serial.print(BMS_Status);
   Serial.print("  Charger Status: ");
@@ -1484,8 +1486,6 @@ void stateHandler()
       {
         VCUstatusChangeCounter = 0;
         VCUstatus = driveForward;
-        Serial.print("VCU Status: ");
-        Serial.println(VCUstatus);
       }
       else
       {
@@ -1501,8 +1501,6 @@ void stateHandler()
         {
           VCUstatusChangeCounter = 0;
           VCUstatus = driveReverse;
-          Serial.print("VCU Status: ");
-          Serial.println(VCUstatus);
         }
         else
         {
@@ -1518,14 +1516,11 @@ void stateHandler()
   {
     if ((dir_FWD == 1) && (dir_REV == 1))
     {
-      Serial.println("Direction Chage! N");
 
       if (VCUstatusChangeCounter > VCUstatusChangeThreshold)
       {
         VCUstatusChangeCounter = 0;
         VCUstatus = driveNeutral;
-        Serial.print("VCU Status: ");
-        Serial.println(VCUstatus);
         digitalWrite(OUT12, LOW); //Turn off Rev Lights
       }
       else
@@ -1533,22 +1528,7 @@ void stateHandler()
         VCUstatusChangeCounter++;
       }
     }
-    if ((dir_FWD == 1) && (dir_REV == 0))
-    {
-      Serial.println("Direction Chage! REV");
-      // {
-      //   if (VCUstatusChangeCounter > VCUstatusChangeThreshold)
-      //   {
-      //     VCUstatusChangeCounter = 0;
-      //     VCUstatus = driveReverse;
-      //     Serial.print("VCU Status: ");
-      //     Serial.println(VCUstatus);
-      //   }
-      //   else
-      //   {
-      //     VCUstatusChangeCounter++;
-      //   }
-    }
+ 
     readPedal();
     BMS_keyOn = 1; //Key on for BMS
 
@@ -1572,17 +1552,17 @@ void stateHandler()
     idx_k = k;
     idx_j = j;
 
-    if (map2 == 1 && map3 == 0)
+    if (map2 == 0 && map3 == 1)
     {
       active_map = 2;
     }
 
-    if (map2 == 0 && map3 == 1)
+    if (map2 == 1 && map3 == 0)
     {
       active_map = 3;
     }
 
-    if (map2 == 0 && map3 == 0)
+    if (map2 == 1 && map3 == 1)
     {
       active_map = 1;
     }
@@ -1675,13 +1655,11 @@ void stateHandler()
   {
     if ((dir_FWD == 1) && (dir_REV == 1))
     {
-      Serial.println("Direction Chage! N");
+      
       if (VCUstatusChangeCounter > VCUstatusChangeThreshold)
       {
         VCUstatusChangeCounter = 0;
         VCUstatus = driveNeutral;
-        Serial.print("VCU Status: ");
-        Serial.println(VCUstatus);
         digitalWrite(OUT4, LOW);  //Turn off Barke Lights
         digitalWrite(OUT12, LOW); //Turn off Rev Lights
       }
@@ -1693,13 +1671,11 @@ void stateHandler()
 
     if ((dir_FWD == 0) && (dir_REV == 1))
     {
-      Serial.println("Direction Chage! FWD");
+
       if (VCUstatusChangeCounter > VCUstatusChangeThreshold)
       {
         VCUstatusChangeCounter = 0;
         VCUstatus = driveForward;
-        Serial.print("VCU Status: ");
-        Serial.println(VCUstatus);
         digitalWrite(OUT12, LOW); //Turn off Rev Lights
       }
       else
@@ -1713,7 +1689,7 @@ void stateHandler()
 
     if (throttlePosition > 5)
     {
-      torqueRequest = throttlePosition * -5; // lets make the pedal less responsive
+      torqueRequest = throttlePosition * -3; // lets make the pedal less responsive
       inverterFunction = 0x03;
       if (motorRPM < -2000)
       {
