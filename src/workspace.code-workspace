@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"path": "..\\..\\..\\BMS"
+		},
+		{
+			"name": "210610-195922-teensy31",
+			"path": "..\\..\\..\\..\\..\\..\\Documents\\PlatformIO\\Projects\\210610-195922-teensy31"
+		},
+		{
+			"name": "210709-204328-teensy41",
+			"path": "..\\..\\..\\..\\..\\..\\Documents\\PlatformIO\\Projects\\210709-204328-teensy41"
+		},
+		{
+			"name": "Mini-E VCU",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.tpp": "cpp"
+		}
+	}
+}
