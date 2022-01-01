@@ -856,9 +856,9 @@ void readPedal()
   float comparisonResult = ((result.result_adc1 * 1.0) / (result.result_adc0 * 1.0));
   if (comparisonResult != 0)
   {
-    if ((comparisonResult > 1.0) && (comparisonResult < 3.5))
+    if ((comparisonResult > 1.0) && (comparisonResult < 2.0))
     {
-      //throttlePosition = result.result_adc1;
+     
       throttlePosition = map(result.result_adc1, tpslowOffset, tpshighOffset, 0, 100);
       if (throttlePosition < 2)
       {
@@ -870,10 +870,10 @@ void readPedal()
       }
     }
 
-    if ((comparisonResult < 1.75) || (comparisonResult > 2.25))
+    if ((comparisonResult < 1.0 || (comparisonResult > 2.0)))
     {
-      // Serial.println("--!PEDDAL MISMATCH!--");
-      // throttlePosition = 0;
+      Serial.println("--!PEDDAL MISMATCH!--");
+      throttlePosition = 0;
     }
   }
 
@@ -1034,6 +1034,12 @@ void inverterComms()
       curentTorque = torqueRequest;
     }
 
+    if (active_map == 3)  // No need to increment in 'sport' mode
+    {
+      torqueRequest = targetTorque;
+      curentTorque = torqueRequest;
+    }
+
     if (regenState == 1 && VCUstatus == 4)
 
     {
@@ -1044,7 +1050,7 @@ void inverterComms()
         Serial.println("Regen inc.");
       }
       else
-        regenRequest = regenTarget;
+      regenRequest = regenTarget;
       torqueRequest = regenRequest;
     }
 
@@ -1184,6 +1190,18 @@ void dashComms()
     msg.buf[5] = highByte(uint16_t(BMS_packvoltage) * 100);
     msg.buf[6] = torqueHibyte;
     msg.buf[7] = torqueLoByte;
+    Can3.write(msg);
+
+    msg.id = 0x560;
+    msg.len = 8;
+    msg.buf[0] = active_map;
+    msg.buf[1] = 0;;
+    msg.buf[2] = 0;;
+    msg.buf[3] = 0;
+    msg.buf[4] = 0;
+    msg.buf[5] = 0;
+    msg.buf[6] = 0;
+    msg.buf[7] = 0;
     Can3.write(msg);
   }
 }
