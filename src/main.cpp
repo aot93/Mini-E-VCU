@@ -236,7 +236,7 @@ const int tpsbins[21] = {0, 3, 5, 8, 10, 13, 18, 20, 23, 25, 28, 32, 34, 40, 50,
 const int rpmbins[num_rpm_bins] = {
     250, 500, 625, 750, 1000, 1250, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 10000};
 
-const int pedal_map_one[21][22] = {
+const int pedal_map_one[21][22] = {   //Normal
     //map 1..
     /*250*/ {0, 0, 6, 6, 6, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5},
     /*500*/ {-10, 0, 6, 6, 6, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5},
@@ -261,7 +261,7 @@ const int pedal_map_one[21][22] = {
     /*10000*/ {-300, 0, 6, 6, 6, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5},
 };
 
-const int pedal_map_two[21][22] = {
+const int pedal_map_two[21][22] = {   //ECO
     //map 2..
     /*250*/ {0, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
     /*500*/ {-10, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
@@ -286,7 +286,7 @@ const int pedal_map_two[21][22] = {
     /*10000*/ {-300, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
 };
 
-const int pedal_map_three[21][22] = {
+const int pedal_map_three[21][22] = {  //Sport
     //map 3..
     /*250*/ {0, 0, 7, 7, 7, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 6},
     /*500*/ {-10, 0, 7, 7, 7, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 6},
@@ -870,11 +870,11 @@ void readPedal()
       }
     }
 
-    if ((comparisonResult < 1.0 || (comparisonResult > 2.0)))
-    {
-      Serial.println("--!PEDDAL MISMATCH!--");
-      throttlePosition = 0;
-    }
+    // if ((comparisonResult < 1.0 || (comparisonResult > 2.0)))
+    // {
+    //   // Serial.println("--!PEDDAL MISMATCH!--");
+    //   // throttlePosition = 0;
+    // }
   }
 
   if (adc->adc0->fail_flag != ADC_ERROR::CLEAR)
@@ -1047,7 +1047,7 @@ void inverterComms()
       {
         regenRequest -= 5;
         torqueRequest = regenRequest;
-        Serial.println("Regen inc.");
+        // Serial.println("Regen inc.");
       }
       else
       regenRequest = regenTarget;
@@ -1061,7 +1061,7 @@ void inverterComms()
       {
         regenRequest += 30;
         torqueRequest = regenRequest;
-        Serial.println("Regen Dec.");
+        // Serial.println("Regen Dec.");
       }
     }
 
@@ -1078,7 +1078,7 @@ void inverterComms()
 
     torqueRequest += 10000;
 
-    if (BMS_discurrent < currentact)
+    if (BMS_discurrent < currentact) //Decrese tourque if we are over current - Crude needs work..
     {
       torqueRequest -= 20;
       Serial.println("--!OVER CURRENT!--");
@@ -1707,7 +1707,7 @@ void stateHandler()
 
     if (throttlePosition > 5)
     {
-      torqueRequest = throttlePosition * -3; // lets make the pedal less responsive
+      torqueRequest = throttlePosition * -6; // lets make the pedal less responsive
       inverterFunction = 0x03;
       if (motorRPM < -2000)
       {
