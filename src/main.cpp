@@ -27,8 +27,8 @@
 #include <ADC.h>
 #include <ADC_util.h>
 #include <EEPROM.h>
-
-//CAN Setup
+#include <Filters.h>
+// CAN Setup
 
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> Can1;
 FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can2;
@@ -41,17 +41,17 @@ CAN_message_t msg;
 
 signed long loopTime = 0;
 
-void canRX_289(const CAN_message_t &msg); //Inverter RPM, Battery and Torque
-void canRX_299(const CAN_message_t &msg); //Inverter Temps
-void canRX_351(const CAN_message_t &msg); //BMS Status
-void canRX_355(const CAN_message_t &msg); //BMS Status
-void canRX_356(const CAN_message_t &msg); //BMS HV Voltage
-void canRX_377(const CAN_message_t &msg); //Outlander Charger Low voltage stats
-void canRX_389(const CAN_message_t &msg); //Outlander Charger HV stats
-void canRX_732(const CAN_message_t &msg); //Inverter Current
-void canRX_733(const CAN_message_t &msg); //Inverter Temps
-void dashComms();                         //update the dash-board
-void bmsComms();                          //Comms to the BMS - Set Key on
+void canRX_289(const CAN_message_t &msg); // Inverter RPM, Battery and Torque
+void canRX_299(const CAN_message_t &msg); // Inverter Temps
+void canRX_351(const CAN_message_t &msg); // BMS Status
+void canRX_355(const CAN_message_t &msg); // BMS Status
+void canRX_356(const CAN_message_t &msg); // BMS HV Voltage
+void canRX_377(const CAN_message_t &msg); // Outlander Charger Low voltage stats
+void canRX_389(const CAN_message_t &msg); // Outlander Charger HV stats
+void canRX_732(const CAN_message_t &msg); // Inverter Current
+void canRX_733(const CAN_message_t &msg); // Inverter Temps
+void dashComms();                         // update the dash-board
+void bmsComms();                          // Comms to the BMS - Set Key on
 
 void dogFood();
 void menu();
@@ -64,20 +64,21 @@ void loadDefault();
 void saveVarsToEEPROM();
 void stateHandler();
 
-//Metro Timers
 
-Metro timer50_1 = Metro(50);     //inverter timer
-Metro timer50_2 = Metro(50);     //De-bounce check
-Metro timer100_1 = Metro(100);   //2nd inverter timer
-Metro timer100_2 = Metro(96);    //longer Debounce
-Metro timer100_3 = Metro(110);   //Temp handler
-Metro timer500_1 = Metro(50);    //pedal debug timer
-Metro timer1000_1 = Metro(1000); //General 1s timer
-Metro timer2000_1 = Metro(2000); //Serial update timer
-Metro timer30s_1 = Metro(30000); //30Sec Timer to check DC-DC State
-Metro timer10_1 = Metro(10);     //Dash coms timer - needs to be fast for stepper motor
+// Metro Timers
 
-//Watchdog Setup
+Metro timer50_1 = Metro(50);     // inverter timer
+Metro timer50_2 = Metro(50);     // De-bounce check
+Metro timer100_1 = Metro(100);   // 2nd inverter timer
+Metro timer100_2 = Metro(96);    // longer Debounce
+Metro timer100_3 = Metro(110);   // Temp handler
+Metro timer500_1 = Metro(50);    // pedal debug timer
+Metro timer1000_1 = Metro(1000); // General 1s timer
+Metro timer2000_1 = Metro(2000); // Serial update timer
+Metro timer30s_1 = Metro(30000); // 30Sec Timer to check DC-DC State
+Metro timer10_1 = Metro(10);     // Dash coms timer - needs to be fast for stepper motor
+
+// Watchdog Setup
 WDT_T4<WDT1> wdt;
 
 void wdtCallback()
@@ -85,39 +86,43 @@ void wdtCallback()
   Serial.println("FEED THE DOG SOON, OR RESET!");
 }
 
-//ADC setup
+// ADC setup
 
 ADC *adc = new ADC();
 
-// Define Outputs
-#define OUT1 6    //NEG Contactor
-#define OUT2 9    //PRE Charge Contactor
-#define OUT3 10   //Drive Contactor
-#define OUT4 11   //Brake Lights
-#define OUT5 12   //Pump
-#define OUT6 24   //FAN
-#define OUT7 25   // No connection
-#define OUT8 28   //DC -DC Enable
-#define OUT9 29   //Temp Gauge
-#define OUT10 33  //RED LED
-#define OUT11 36  //Green LED
-#define OUT12 37  //Reverse Lights
-#define LEDpin 13 //Builtin LED
+// Filter setup
+float filterFrequency = 5.0;
+FilterOnePole lowpassFilter(LOWPASS, filterFrequency);
 
-//Define Inputs
-#define ISO_IN1 2  //FWD
-#define ISO_IN2 3  //START
-#define ISO_IN3 4  //Brake
-#define ISO_IN4 5  //REV
+// Define Outputs
+#define OUT1 6    // NEG Contactor
+#define OUT2 9    // PRE Charge Contactor
+#define OUT3 10   // Drive Contactor
+#define OUT4 11   // Brake Lights
+#define OUT5 12   // Pump
+#define OUT6 24   // FAN
+#define OUT7 25   // No connection
+#define OUT8 28   // DC -DC Enable
+#define OUT9 29   // Temp Gauge
+#define OUT10 33  // RED LED
+#define OUT11 36  // Green LED
+#define OUT12 37  // Reverse Lights
+#define LEDpin 13 // Builtin LED
+
+// Define Inputs
+#define ISO_IN1 2  // FWD
+#define ISO_IN2 3  // START
+#define ISO_IN3 4  // Brake
+#define ISO_IN4 5  // REV
 #define ISO_IN5 26 // MAP 2 ECO
 #define ISO_IN6 27 // MAP 3 SPORT
 #define ISO_IN7 32 // IGNITION
 #define ISO_IN8 21 // PP Detect
 
-#define POT_A 41 //POT A
-#define POT_B 40 //POT B
+#define POT_A 41 // POT A
+#define POT_B 40 // POT B
 
-//VCU Staus
+// VCU Staus
 
 #define boot 1
 #define ready 2
@@ -127,39 +132,40 @@ ADC *adc = new ADC();
 #define charging 6
 #define error 7
 
-uint8_t VCUstatusChangeCounter = 0;    //used for hysterisys to stop jitter on VCU status
+uint8_t VCUstatusChangeCounter = 0;    // used for hysterisys to stop jitter on VCU status
 uint8_t VCUstatusChangeThreshold = 60; // n loops
 
 uint8_t VCUstatus = 1;
 
-uint8_t contactorState = 0; //state of contactors
+// Setup Variables
 
-//Setup Variables
-
-uint8_t brake_pedal; //Brake lights
+uint8_t brake_pedal; // Brake lights
 
 uint8_t start;
-uint8_t ppDetect;    //Prox pilot pin
-uint8_t ignition;    //ignition
-uint8_t dir_FWD;     //Drive Switch is set to forward
-uint8_t dir_REV;     //dRIVE Sitch is to Reverse
-uint8_t dir_NEUTRAL; //Set Neutral as the default state
-uint8_t BMS_Status;  //BMS Status
+uint8_t ppDetect;    // Prox pilot pin
+uint8_t ignition;    // ignition
+uint8_t dir_FWD;     // Drive Switch is set to forward
+uint8_t dir_REV;     // dRIVE Sitch is to Reverse
+uint8_t dir_NEUTRAL; // Set Neutral as the default state
+uint8_t BMS_Status;  // BMS Status
 uint8_t BMS_SOC;
 uint8_t inverterFunction = 0x00;
 uint8_t BMS_keyOn = 0;
 
-float BMS_avgtmp; //BMS Battery AVG Temp
-float currentact; //BMS Current
+float BMS_avgtmp; // BMS Battery AVG Temp
+float currentact; // BMS Current
 float BMS_packvoltage;
 int BMS_discurrent;
 
-unsigned long pretimer1;
+unsigned long pretimer1 = 0;
+unsigned long pretimer2 = 0;
+unsigned long preChargeRiseTime = 0;
 
 int chargerHVbattryVolts = 0;
 int chargerACvolts = 0;
 float charger12vbattryVolts = 0;
 float charger12vCurrent = 0;
+
 int chargerTemp1 = 0;
 int chargerTemp2 = 0;
 int chargerTemp3 = 0;
@@ -172,7 +178,7 @@ int motorRPM = 0;
 int motorTempPeak = 0;
 int motorTemp1 = 0;
 int motorTemp2 = 0;
-uint16_t motorHVbatteryVolts = 0;
+int motorHVbatteryVolts = 0;
 int motorTorque = 0;
 int motorCurrent1 = 0;
 int motorCurrent2 = 0;
@@ -192,8 +198,8 @@ uint8_t pedalDebug = 0;
 uint8_t inverterEnable = 1;
 int regenTarget = 0;       // target regen torque
 uint32_t regenTimer = 0;   // timer for regen delay
-uint32_t regenDelay = 250; //delay before regen Starts
-uint8_t regenState = 0;    //Are we requesting regen
+uint32_t regenDelay = 250; // delay before regen Starts
+uint8_t regenState = 0;    // Are we requesting regen
 uint32_t brakeDelay = 0;
 int regenRequest = 0;
 
@@ -202,10 +208,10 @@ uint8_t menuLoad = 0;
 uint8_t showStats = 1;
 uint8_t pumpState = 0;
 uint8_t fanState = 0;
-//EEPROM Stored Vars
+// EEPROM Stored Vars
 
-uint8_t tempGaugeMin = EEPROM.read(1); //Temp Gauge min PWM
-uint8_t tempGaugeMax = EEPROM.read(2); //Temp Gauge Max PWM
+uint8_t tempGaugeMin = EEPROM.read(1); // Temp Gauge min PWM
+uint8_t tempGaugeMax = EEPROM.read(2); // Temp Gauge Max PWM
 
 uint8_t pumpOnTemp = EEPROM.read(3);
 uint8_t pumpoffTemp = EEPROM.read(4);
@@ -213,21 +219,21 @@ uint8_t pumpoffTemp = EEPROM.read(4);
 uint8_t fanOnTemp = EEPROM.read(5);
 uint8_t fanOffTemp = EEPROM.read(6);
 
-int maxTorque = EEPROM.read(31) * 255 + EEPROM.read(30);
-int minTorque = EEPROM.read(8);                              //Used for creeping
-int tpslowOffset = EEPROM.read(21) * 255 + EEPROM.read(20);  //Value when foot off pedal
-int tpshighOffset = EEPROM.read(23) * 255 + EEPROM.read(22); //Value when foot on pedal
-int torqueIncrement = EEPROM.read(11);                       //used for default rpm based regen
+int maxTorque = EEPROM.read(31) * 255 + EEPROM.read(30);     // not used currently
+int minTorque = EEPROM.read(8);                              // Used for creeping feature to be added
+int tpslowOffset = EEPROM.read(21) * 255 + EEPROM.read(20);  // Value when foot off pedal
+int tpshighOffset = EEPROM.read(23) * 255 + EEPROM.read(22); // Value when foot on pedal
+int torqueIncrement = EEPROM.read(11);                       // used for ramping up torque request
 uint8_t setTpsLow = 0;
 uint8_t setTpsHigh = 0;
 
-uint8_t active_map = 1;   //Active Pedal map
-uint8_t map2;         //Eco Map
-uint8_t map3;         //Sport MAp
+uint8_t active_map = 1; // Active Pedal map
+uint8_t map2;           // Eco Map
+uint8_t map3;           // Sport MAp
 
-//Setup the peddal map arrays..
+// Setup the peddal map arrays..
 
-byte idx_j, idx_k; //index of tps,rpm bins
+byte idx_j, idx_k; // index of tps,rpm bins
 int pedal_offset;
 
 const int num_rpm_bins = 21;
@@ -236,8 +242,9 @@ const int tpsbins[21] = {0, 3, 5, 8, 10, 13, 18, 20, 23, 25, 28, 32, 34, 40, 50,
 const int rpmbins[num_rpm_bins] = {
     250, 500, 625, 750, 1000, 1250, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 10000};
 
-const int pedal_map_one[21][22] = {   //Normal
-    //map 1..
+const int pedal_map_one[21][22] = {
+    // Normal
+    // map 1..
     /*250*/ {0, 0, 6, 6, 6, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5},
     /*500*/ {-10, 0, 6, 6, 6, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5},
     /*625*/ {-20, 0, 6, 6, 6, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5},
@@ -261,8 +268,9 @@ const int pedal_map_one[21][22] = {   //Normal
     /*10000*/ {-300, 0, 6, 6, 6, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5},
 };
 
-const int pedal_map_two[21][22] = {   //ECO
-    //map 2..
+const int pedal_map_two[21][22] = {
+    // ECO
+    // map 2..
     /*250*/ {0, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
     /*500*/ {-10, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
     /*625*/ {-20, 0, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
@@ -286,8 +294,9 @@ const int pedal_map_two[21][22] = {   //ECO
     /*10000*/ {-300, 0, 0, 3, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6},
 };
 
-const int pedal_map_three[21][22] = {  //Sport
-    //map 3..
+const int pedal_map_three[21][22] = {
+    // Sport
+    // map 3..
     /*250*/ {0, 0, 7, 7, 7, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 6},
     /*500*/ {-10, 0, 7, 7, 7, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 6},
     /*625*/ {-20, 0, 7, 7, 7, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 6},
@@ -314,7 +323,7 @@ const int pedal_map_three[21][22] = {  //Sport
 void setup()
 {
 
-  //Setup Can
+  // Setup Can
 
   Can1.begin();
   Can2.begin();
@@ -353,14 +362,14 @@ void setup()
   Can3.setMBFilter(REJECT_ALL);
   Can3.enableMBInterrupts();
   Can1.onReceive(MB0, canRX_377); // Charger LV Stats
-  Can1.onReceive(MB1, canRX_355); //BMS Status
-  Can1.onReceive(MB2, canRX_389); //Charger HV Stats
-  Can2.onReceive(MB3, canRX_289); //Inverter RPM Battery and Torque
-  Can2.onReceive(MB4, canRX_299); //Inverter Temps
-  Can2.onReceive(MB5, canRX_732); //Inverter current
-  Can2.onReceive(MB6, canRX_733); //Inverter Temps
-  Can1.onReceive(MB7, canRX_356); //BMS HV Voltage
-  Can1.onReceive(MB8, canRX_351); //BMS HV Voltage
+  Can1.onReceive(MB1, canRX_355); // BMS Status
+  Can1.onReceive(MB2, canRX_389); // Charger HV Stats
+  Can2.onReceive(MB3, canRX_289); // Inverter RPM Battery and Torque
+  Can2.onReceive(MB4, canRX_299); // Inverter Temps
+  Can2.onReceive(MB5, canRX_732); // Inverter current
+  Can2.onReceive(MB6, canRX_733); // Inverter Temps
+  Can1.onReceive(MB7, canRX_356); // BMS HV Voltage
+  Can1.onReceive(MB8, canRX_351); // BMS HV Voltage
   Can1.setMBFilter(MB0, 0x377);
   Can1.setMBFilter(MB1, 0x355);
   Can1.setMBFilter(MB2, 0x389);
@@ -375,45 +384,45 @@ void setup()
   Can2.mailboxStatus();
   Can3.mailboxStatus();
 
-  //Setup ADC
+  // Setup ADC
 
-  adc->adc0->setAveraging(16);                                    // set number of averages
+  adc->adc0->setAveraging(32);                                    // set number of averages
   adc->adc0->setResolution(16);                                   // set bits of resolution
   adc->adc0->setConversionSpeed(ADC_CONVERSION_SPEED::MED_SPEED); // change the conversion speed
   adc->adc0->setSamplingSpeed(ADC_SAMPLING_SPEED::MED_SPEED);     // change the sampling speed
 
-  adc->adc1->setAveraging(16);                                    // set number of averages
+  adc->adc1->setAveraging(32);                                    // set number of averages
   adc->adc1->setResolution(16);                                   // set bits of resolution
   adc->adc1->setConversionSpeed(ADC_CONVERSION_SPEED::MED_SPEED); // change the conversion speed
   adc->adc1->setSamplingSpeed(ADC_SAMPLING_SPEED::MED_SPEED);     // change the sampling speed
 
-  //Set up Outputs
-  pinMode(OUT1, OUTPUT);   //Neg Cnct
-  pinMode(OUT2, OUTPUT);   //Pre Cnct
-  pinMode(OUT3, OUTPUT);   //Drive cnct
-  pinMode(OUT4, OUTPUT);   //Brake lights
-  pinMode(OUT5, OUTPUT);   //Pump
-  pinMode(OUT6, OUTPUT);   //Fan
-  pinMode(OUT7, OUTPUT);   //No conection
-  pinMode(OUT8, OUTPUT);   //DC-DC Enable
-  pinMode(OUT9, OUTPUT);   //Temp Gauge
-  pinMode(OUT10, OUTPUT);  //Dash Red LED
-  pinMode(OUT11, OUTPUT);  //Dash Green LED
-  pinMode(OUT12, OUTPUT);  //Rev Lights
-  pinMode(LEDpin, OUTPUT); //Builtin LED
+  // Set up Outputs
+  pinMode(OUT1, OUTPUT);   // Neg Cnct
+  pinMode(OUT2, OUTPUT);   // Pre Cnct
+  pinMode(OUT3, OUTPUT);   // Drive cnct
+  pinMode(OUT4, OUTPUT);   // Brake lights
+  pinMode(OUT5, OUTPUT);   // Pump
+  pinMode(OUT6, OUTPUT);   // Fan
+  pinMode(OUT7, OUTPUT);   // No conection
+  pinMode(OUT8, OUTPUT);   // DC-DC Enable
+  pinMode(OUT9, OUTPUT);   // Temp Gauge
+  pinMode(OUT10, OUTPUT);  // Dash Red LED
+  pinMode(OUT11, OUTPUT);  // Dash Green LED
+  pinMode(OUT12, OUTPUT);  // Rev Lights
+  pinMode(LEDpin, OUTPUT); // Builtin LED
 
-  //Setup Inputs
-  pinMode(ISO_IN1, INPUT); //FWD
-  pinMode(ISO_IN2, INPUT); //start from key
-  pinMode(ISO_IN3, INPUT); //Brake
-  pinMode(ISO_IN4, INPUT); //REV
-  pinMode(ISO_IN5, INPUT); //IGN
-  pinMode(ISO_IN6, INPUT); //Map 1
-  pinMode(ISO_IN7, INPUT); //MAP 2
+  // Setup Inputs
+  pinMode(ISO_IN1, INPUT); // FWD
+  pinMode(ISO_IN2, INPUT); // start from key
+  pinMode(ISO_IN3, INPUT); // Brake
+  pinMode(ISO_IN4, INPUT); // REV
+  pinMode(ISO_IN5, INPUT); // IGN
+  pinMode(ISO_IN6, INPUT); // Map 1
+  pinMode(ISO_IN7, INPUT); // MAP 2
   pinMode(ISO_IN8, INPUT); // PP Detect
 
-  pinMode(POT_A, INPUT); //Throtle Pot A
-  pinMode(POT_B, INPUT); //Throtle Pot B
+  pinMode(POT_A, INPUT); // Throtle Pot A
+  pinMode(POT_B, INPUT); // Throtle Pot B
 
   // Write initial Vals to Outputs
   digitalWrite(OUT1, LOW);
@@ -430,10 +439,10 @@ void setup()
   digitalWrite(OUT12, LOW);
   digitalWrite(LEDpin, HIGH);
 
-  //Watch Dog setup
+  // Watch Dog setup
   WDT_timings_t config;
-  config.trigger = 1; //in seconds, 0->128
-  config.timeout = 5; //in seconds, 0->128 
+  config.trigger = 1; // in seconds, 0->128
+  config.timeout = 5; // in seconds, 0->128
   config.callback = wdtCallback;
   wdt.begin(config);
 
@@ -449,14 +458,14 @@ ADC::Sync_result result;
 void loop()
 {
   long loopTimestart = micros();
-  dogFood(); //Reset the Watchdog
+  dogFood(); // Reset the Watchdog
 
-  Can1.events(); //Call CAN bus bus interupts
+  Can1.events(); // Call CAN bus bus interupts
   Can2.events();
-  Can3.events(); //Currently this only send.
+  Can3.events(); // Currently this only send.
 
-  dashComms();  
-  tempCheck();  
+  dashComms();
+  tempCheck();
   stateHandler();
   readPins();
 
@@ -468,7 +477,7 @@ void loop()
   if (Serial.available() > 0)
   {
     incomingByte = Serial.read();
-    if (incomingByte == 115) //press s for menu
+    if (incomingByte == 115) // press s for menu
     {
       menuLoad = 0;
       showStats = 0;
@@ -477,6 +486,21 @@ void loop()
     else
     {
       menu();
+    }
+  }
+
+  if (timer30s_1.check()==1)  //Check the DC-DC so we only enable when needed.
+  {
+    if (charger12vbattryVolts > 12.5) //Greater than 12.5 volts probably menas not much load let's check
+        {
+          if (charger12vCurrent < .85)
+          {
+            digitalWrite(OUT8, LOW);
+          }
+        }
+    else
+    {
+      digitalWrite(OUT8, HIGH);
     }
   }
 
@@ -500,7 +524,7 @@ void loop()
 void menu()
 {
   if (menuLoad == 0)
-  { //Serial Menu
+  { // Serial Menu
     Serial.println("----------------Mini E VCU Settings Menu----------------");
     Serial.println();
     Serial.println("1 - Set Pump on Temp");
@@ -517,6 +541,7 @@ void menu()
     Serial.println("M - Pump on / Off");
     Serial.println("P - Show Pedal debug info");
     Serial.println("X - Enable / Disable inverter");
+    Serial.println("E - Enable / Disable DC-DC");
     Serial.println("L - Load Default Values");
     Serial.println("V - VCU Status");
     Serial.println("I - Input Test");
@@ -684,16 +709,10 @@ void menu()
     menuLoad = 0;
   }
 
-  case 'd':
-    showInfo();
-    menuLoad = 0;
-
-    break;
-
   case 'f':
     if (fanState == 0)
     {
-      fanState = 2; //2 = Debug
+      fanState = 2; // 2 = Debug
       digitalWrite(OUT6, HIGH);
       Serial.print("FAN ON");
     }
@@ -743,7 +762,7 @@ void menu()
   case 'm':
     if (pumpState == 0)
     {
-      pumpState = 2; //2 = Debug
+      pumpState = 2; // 2 = Debug
       digitalWrite(OUT5, HIGH);
       Serial.print("PUMP ON");
     }
@@ -785,6 +804,16 @@ void menu()
 
     break;
 
+  case 'e':
+    if (digitalRead(OUT8)==HIGH)
+    {
+      digitalWrite(OUT8, LOW);
+    }
+    else
+    {
+      digitalWrite(OUT8, HIGH);
+    }
+
   case 'v':
     Serial.print("");
     Serial.print("VCU Status: ");
@@ -818,6 +847,7 @@ void menu()
 
     break;
 
+
   case 'r':
     wdt.reset();
     break;
@@ -846,8 +876,8 @@ void readPins()
 
 void readPedal()
 
-//Sync Analog read
-//compare the result
+// Sync Analog read
+// compare the result
 
 {
   ADC::Sync_result result = adc->analogSyncRead(POT_A, POT_B);
@@ -858,8 +888,11 @@ void readPedal()
   {
     if ((comparisonResult > 1.0) && (comparisonResult < 2.0))
     {
-     
+      lowpassFilter.input(result.result_adc1);
+      throttlePosition = floor(lowpassFilter.output());
+
       throttlePosition = map(result.result_adc1, tpslowOffset, tpshighOffset, 0, 100);
+
       if (throttlePosition < 2)
       {
         throttlePosition = 0;
@@ -899,6 +932,9 @@ void readPedal()
 
     Serial.print(" Throtle Position: ");
     Serial.println(throttlePosition);
+
+    Serial.print("Filtered Position: ");
+    Serial.println(lowpassFilter.output());
   }
 
   if (setTpsLow == 1)
@@ -919,21 +955,21 @@ void readPedal()
 
 void dogFood()
 {
-  wdt.feed(); //Feed the Watchdog
+  wdt.feed(); // Feed the Watchdog
 }
 
-//CAN Functions
+// CAN Functions
 
 void canRX_289(const CAN_message_t &msg)
 {
-  motorTorque = ((((msg.buf[0] * 256) + msg.buf[1]) - 10000) / 10); //Motor Torque -200 / + 200nm
-  motorRPM = (msg.buf[2] * 256 + msg.buf[3] - 20000);               //289_RrRPM,Rear RPM,220289,C*256+D-20000,-10000,10000,RPM,
-  motorHVbatteryVolts = (msg.buf[4] * 256 + msg.buf[5]);            //Inverter HV
+  motorTorque = ((((msg.buf[0] * 256) + msg.buf[1]) - 10000) / 10); // Motor Torque -200 / + 200nm
+  motorRPM = (msg.buf[2] * 256 + msg.buf[3] - 20000);               // 289_RrRPM,Rear RPM,220289,C*256+D-20000,-10000,10000,RPM,
+  motorHVbatteryVolts = (msg.buf[4] * 256 + msg.buf[5]);            // Inverter HV
 }
 
 void canRX_299(const CAN_message_t &msg)
 {
-  //inverter Temps
+  // inverter Temps
   motorTempPeak = (msg.buf[0] - 40);
   inverterTemp1 = (msg.buf[1] - 40);
   inverterTemp2 = (msg.buf[4] - 40);
@@ -987,7 +1023,7 @@ void canRX_377(const CAN_message_t &msg)
 
 void canRX_389(const CAN_message_t &msg)
 {
-  chargerHVbattryVolts = msg.buf[0] * 2; //Charger HV Battery Voltage
+  chargerHVbattryVolts = msg.buf[0] * 2; // Charger HV Battery Voltage
   chargerACvolts = msg.buf[1];
   chargerHVcurrent = msg.buf[2];
   chargerTemp4 = msg.buf[4] - 40;
@@ -1002,7 +1038,7 @@ void canRX_732(const CAN_message_t &msg)
 
 void canRX_733(const CAN_message_t &msg)
 {
-  //inverter Temps
+  // inverter Temps
   motorTemp1 = (msg.buf[0] - 40);
   motorTemp2 = (msg.buf[2] - 40);
   avgMotorTemp = (motorTemp1 + motorTemp2 + motorTempPeak) / 3;
@@ -1034,7 +1070,7 @@ void inverterComms()
       curentTorque = torqueRequest;
     }
 
-    if (active_map == 3)  // No need to increment in 'sport' mode
+    if (active_map == 3 && VCUstatus == 4) // No need to increment in 'sport' mode
     {
       torqueRequest = targetTorque;
       curentTorque = torqueRequest;
@@ -1050,7 +1086,7 @@ void inverterComms()
         // Serial.println("Regen inc.");
       }
       else
-      regenRequest = regenTarget;
+        regenRequest = regenTarget;
       torqueRequest = regenRequest;
     }
 
@@ -1078,7 +1114,7 @@ void inverterComms()
 
     torqueRequest += 10000;
 
-    if (BMS_discurrent < currentact) //Decrese tourque if we are over current - Crude needs work..
+    if (BMS_discurrent < currentact) // Decrese tourque if we are over current - Crude needs work..
     {
       torqueRequest -= 20;
       Serial.println("--!OVER CURRENT!--");
@@ -1195,8 +1231,10 @@ void dashComms()
     msg.id = 0x560;
     msg.len = 8;
     msg.buf[0] = active_map;
-    msg.buf[1] = 0;;
-    msg.buf[2] = 0;;
+    msg.buf[1] = 0;
+    ;
+    msg.buf[2] = 0;
+    ;
     msg.buf[3] = 0;
     msg.buf[4] = 0;
     msg.buf[5] = 0;
@@ -1227,7 +1265,7 @@ void tempCheck()
   if (timer100_3.check() == 1)
   {
 
-    if (avgChargerTemp || avgInverterTemp || avgMotorTemp > pumpOnTemp) //Temp Handling
+    if (avgChargerTemp || avgInverterTemp || avgMotorTemp > pumpOnTemp) // Temp Handling
     {
 
       if (pumpState == 0)
@@ -1292,7 +1330,7 @@ void showInfo()
   Serial.println();
   Serial.print("VCU Staus: ");
   Serial.print(VCUstatus);
-  Serial.print( "Active MAp:");
+  Serial.print("Active Map:");
   Serial.print(active_map);
   Serial.print("  BMS Status: ");
   Serial.print(BMS_Status);
@@ -1312,6 +1350,8 @@ void showInfo()
   Serial.print(charger12vbattryVolts);
   Serial.print(" DC-DC Current: ");
   Serial.print(charger12vCurrent);
+  Serial.print(" DC-DC Enable: ");
+  Serial.print(digitalRead(OUT8));
   Serial.print(" HV charger Current: ");
   Serial.print(chargerHVcurrent);
   Serial.print(" HV Battery Voltage: ");
@@ -1360,8 +1400,8 @@ void showInfo()
 
 void loadDefault() // Load the defaul values
 {
-  tempGaugeMin = 18;  //Temp Gauge min PWM
-  tempGaugeMax = 128; //Temp Gauge Max PWM
+  tempGaugeMin = 18;  // Temp Gauge min PWM
+  tempGaugeMax = 128; // Temp Gauge Max PWM
 
   pumpOnTemp = 36;
   pumpoffTemp = 35;
@@ -1369,17 +1409,17 @@ void loadDefault() // Load the defaul values
   fanOnTemp = 71;
   fanOffTemp = 70;
 
-  maxTorque = 200;      //Not used curently
-  minTorque = 0;        //Not used curently
-  tpslowOffset = 1000;  //Value when foot off pedal
-  tpshighOffset = 3790; //Value when foot on pedal
-  torqueIncrement = 20; //Value to ramp tourqe by
+  maxTorque = 200;      // Not used curently
+  minTorque = 0;        // Not used curently
+  tpslowOffset = 1000;  // Value when foot off pedal
+  tpshighOffset = 3790; // Value when foot on pedal
+  torqueIncrement = 20; // Value to ramp tourqe by
   active_map = 1;
 
   Serial.println("Loaded Default Vlues");
 }
 
-void saveVarsToEEPROM() //Save Values to EEPROM
+void saveVarsToEEPROM() // Save Values to EEPROM
 {
   Serial.println("Writing Values to EEPROM...");
   EEPROM.update(1, tempGaugeMin);
@@ -1445,16 +1485,16 @@ void stateHandler()
   {
     if (digitalRead(OUT12) == HIGH)
     {
-      digitalWrite(OUT12, LOW); //Turn off the reversing lights
+      digitalWrite(OUT12, LOW); // Turn off the reversing lights
     }
     if (digitalRead(OUT4) == HIGH)
     {
-      digitalWrite(OUT4, LOW); //Turn off the Brake lights
+      digitalWrite(OUT4, LOW); // Turn off the Brake lights
     }
-    if (digitalRead(OUT1) == LOW) //Check if Neg Contactor is off then start the sequence
+    if (digitalRead(OUT1) == LOW) // Check if Neg Contactor is off then start the sequence
     {
 
-      digitalWrite(OUT1, HIGH); //Negative Contactor
+      digitalWrite(OUT1, HIGH); // Negative Contactor
       Serial.println("Negative On!...");
       pretimer1 = millis();
     }
@@ -1465,13 +1505,14 @@ void stateHandler()
         digitalWrite(OUT2, HIGH);
         Serial.println("PreCharge On!...");
         pretimer1 = millis();
+        pretimer2 = millis();
       }
     }
     if (pretimer1 + 1000 < millis())
     {
-      if ((motorHVbatteryVolts > 280) && (digitalRead(OUT3) == LOW)) //Check that the preCharge has finished
+      if ((motorHVbatteryVolts > BMS_packvoltage - 5.0) && (chargerHVbattryVolts > BMS_packvoltage - 5.0) && (digitalRead(OUT3) == LOW)) // Check that the preCharge has finished
       {
-        digitalWrite(OUT3, HIGH); //Turn on drive Contactor
+        digitalWrite(OUT3, HIGH); // Turn on drive Contactor
         Serial.println("Main On!...");
         pretimer1 = millis();
       }
@@ -1481,48 +1522,72 @@ void stateHandler()
     {
       digitalWrite(OUT2, LOW);
       Serial.println("PreCharge OFF!...");
-      digitalWrite(OUT8, HIGH); //DC-DC Enable on
+      digitalWrite(OUT8, HIGH); // DC-DC Enable on
       Serial.println("DC-DC Enabled...");
       Serial.print("VCU Status: ");
       Serial.println(VCUstatus);
+      Serial.print("Precharge Time: ");
+      Serial.println(preChargeRiseTime);
+      pretimer1 = 0;
+    }
+
+    if ((digitalRead(OUT3) == LOW) && (digitalRead(OUT2) == HIGH))
+    {
+
+      if (motorHVbatteryVolts >= BMS_packvoltage - 5.0)
+      {
+        if (preChargeRiseTime == 0)
+        {
+          preChargeRiseTime = millis() - pretimer2;
+        }
+      }
     }
 
     if ((digitalRead(OUT3) == HIGH) && (digitalRead(OUT2) == LOW) && (digitalRead(OUT1) == HIGH))
     {
+      if (preChargeRiseTime < 500)
+      {
+        digitalWrite(OUT10, HIGH);
+      }
+      if (preChargeRiseTime >= 500)
+      {
+        digitalWrite(OUT10, LOW); // Red dash LED Off
+      }
 
-      digitalWrite(OUT10, LOW);  //Red dash LED Off
-      digitalWrite(OUT11, HIGH); //Green dash LED On
+      digitalWrite(OUT11, HIGH); // Green dash LED On
+
       if (motorRPM < 500)
-      {                          //Dont shut down inverter above 2mph
-        BMS_keyOn = 0;           //BMS Key off...Inverter Disable
+      {                          // Dont shut down inverter above 2mph
+        BMS_keyOn = 0;           // BMS Key off...Inverter Disable
         inverterFunction = 0x00; // Inverter Disable
       }
-    }
-    if ((dir_FWD == 0) && (dir_REV == 1) && (BMS_Status != 5))
-    {
-      if (VCUstatusChangeCounter > VCUstatusChangeThreshold)
-      {
-        VCUstatusChangeCounter = 0;
-        VCUstatus = driveForward;
-      }
-      else
-      {
-        VCUstatusChangeCounter++;
-      }
-    }
-    if ((dir_FWD == 1) && (dir_REV == 0) && (BMS_Status != 5))
-    {
 
-      if (motorRPM < 500)
+      if ((dir_FWD == 0) && (dir_REV == 1) && (BMS_Status != 5))
       {
         if (VCUstatusChangeCounter > VCUstatusChangeThreshold)
         {
           VCUstatusChangeCounter = 0;
-          VCUstatus = driveReverse;
+          VCUstatus = driveForward;
         }
         else
         {
           VCUstatusChangeCounter++;
+        }
+      }
+      if ((dir_FWD == 1) && (dir_REV == 0) && (BMS_Status != 5))
+      {
+
+        if (motorRPM < 500)
+        {
+          if (VCUstatusChangeCounter > VCUstatusChangeThreshold)
+          {
+            VCUstatusChangeCounter = 0;
+            VCUstatus = driveReverse;
+          }
+          else
+          {
+            VCUstatusChangeCounter++;
+          }
         }
       }
     }
@@ -1539,22 +1604,22 @@ void stateHandler()
       {
         VCUstatusChangeCounter = 0;
         VCUstatus = driveNeutral;
-        digitalWrite(OUT12, LOW); //Turn off Rev Lights
+        digitalWrite(OUT12, LOW); // Turn off Rev Lights
       }
       else
       {
         VCUstatusChangeCounter++;
       }
     }
- 
-    readPedal();
-    BMS_keyOn = 1; //Key on for BMS
 
-    digitalWrite(OUT12, LOW); //Turn off Rev Lights
+    readPedal();
+    BMS_keyOn = 1; // Key on for BMS
+
+    digitalWrite(OUT12, LOW); // Turn off Rev Lights
     // Pedal Map Handler
 
-    byte j = 0; //index of tps
-    byte k = 0; //index of throttle pos
+    byte j = 0; // index of tps
+    byte k = 0; // index of throttle pos
     while (throttlePosition > tpsbins[k])
     {
       k++;
@@ -1618,12 +1683,12 @@ void stateHandler()
         regenTarget = 0;
         regenRequest = 0;
         brakeDelay = 0;
-        digitalWrite(OUT4, LOW); //Brake Lights off
+        digitalWrite(OUT4, LOW); // Brake Lights off
       }
     }
     else if (pedal_offset > 1 && regenState != 2)
     {
-      inverterFunction = 0x03;                              //Enable inverter
+      inverterFunction = 0x03;                              // Enable inverter
       targetTorque = (throttlePosition * pedal_offset) * 2; //*2 because we are 200nm Max torque
       regenState = 0;
       regenTarget = 0;
@@ -1655,14 +1720,14 @@ void stateHandler()
 
     if (brake_pedal == 0 && motorRPM < 100)
     {
-      torqueRequest = 0;       //0 Torque if the brake is presed and we are nearly stopped
-      inverterFunction = 0x00; //Shut off inverter
+      torqueRequest = 0;       // 0 Torque if the brake is presed and we are nearly stopped
+      inverterFunction = 0x00; // Shut off inverter
       regenState = 0;
       regenTarget = 0;
       regenRequest = 0;
       regenTimer = 0;
       brakeDelay = 0;
-      digitalWrite(OUT4, LOW); //Brake Lights off
+      digitalWrite(OUT4, LOW); // Brake Lights off
     }
     inverterComms();
 
@@ -1673,13 +1738,13 @@ void stateHandler()
   {
     if ((dir_FWD == 1) && (dir_REV == 1))
     {
-      
+
       if (VCUstatusChangeCounter > VCUstatusChangeThreshold)
       {
         VCUstatusChangeCounter = 0;
         VCUstatus = driveNeutral;
-        digitalWrite(OUT4, LOW);  //Turn off Barke Lights
-        digitalWrite(OUT12, LOW); //Turn off Rev Lights
+        digitalWrite(OUT4, LOW);  // Turn off Barke Lights
+        digitalWrite(OUT12, LOW); // Turn off Rev Lights
       }
       else
       {
@@ -1694,7 +1759,7 @@ void stateHandler()
       {
         VCUstatusChangeCounter = 0;
         VCUstatus = driveForward;
-        digitalWrite(OUT12, LOW); //Turn off Rev Lights
+        digitalWrite(OUT12, LOW); // Turn off Rev Lights
       }
       else
       {
@@ -1702,8 +1767,8 @@ void stateHandler()
       }
     }
     readPedal();
-    BMS_keyOn = 1;             //enable the inverter
-    digitalWrite(OUT12, HIGH); //Turn on the reversing lights
+    BMS_keyOn = 1;             // enable the inverter
+    digitalWrite(OUT12, HIGH); // Turn on the reversing lights
 
     if (throttlePosition > 5)
     {
@@ -1717,7 +1782,7 @@ void stateHandler()
 
     if (brake_pedal == 0)
     {
-      torqueRequest = 0; //0 Torque if the brake is presed
+      torqueRequest = 0; // 0 Torque if the brake is presed
     }
     inverterComms();
 
@@ -1726,10 +1791,10 @@ void stateHandler()
   case charging:
   {
     inverterFunction = 0x00;      // disable the inverter
-    if (digitalRead(OUT1) == LOW) //Check if Neg Contactor is off then start the sequence
+    if (digitalRead(OUT1) == LOW) // Check if Neg Contactor is off then start the sequence
     {
 
-      digitalWrite(OUT1, HIGH); //Negative Contactor
+      digitalWrite(OUT1, HIGH); // Negative Contactor
       Serial.println("Negative On!...");
       pretimer1 = millis();
     }
@@ -1740,13 +1805,14 @@ void stateHandler()
         digitalWrite(OUT2, HIGH);
         Serial.println("PreCharge On!...");
         pretimer1 = millis();
+        pretimer2 = millis();
       }
     }
     if (pretimer1 + 1000 < millis())
     {
-      if ((chargerHVbattryVolts > 250) && digitalRead(OUT3) == LOW)
+      if ((chargerHVbattryVolts > BMS_packvoltage - 5.0) && (digitalRead(OUT3) == LOW)) // Check that the preCharge has finished
       {
-        digitalWrite(OUT3, HIGH); //Turn on drive Contactor
+        digitalWrite(OUT3, HIGH); // Turn on drive Contactor
         Serial.println("Main On!...");
         pretimer1 = millis();
       }
@@ -1756,31 +1822,54 @@ void stateHandler()
     {
       digitalWrite(OUT2, LOW);
       Serial.println("PreCharge OFF!...");
-      digitalWrite(OUT8, HIGH); //DC-DC Enable on
+      digitalWrite(OUT8, HIGH); // DC-DC Enable on
       Serial.println("DC-DC Enabled...");
       Serial.print("VCU Status: ");
       Serial.println(VCUstatus);
+      Serial.print("Precharge Time: ");
+      Serial.println(preChargeRiseTime);
+      pretimer1 = 0;
     }
-    //Check the contactor state
+    if ((digitalRead(OUT3) == LOW) && (digitalRead(OUT2) == HIGH))
+    {
+
+      if (chargerHVbattryVolts >= BMS_packvoltage - 5.0)
+      {
+        if (preChargeRiseTime == 0)
+        {
+          preChargeRiseTime = millis() - pretimer2;
+        }
+      }
+    }
+
+    // Check the contactor state
     if ((digitalRead(OUT3) == HIGH) && (digitalRead(OUT2) == LOW) && (digitalRead(OUT1) == HIGH))
     {
       if (BMS_Status == 3)
       {
 
-        BMS_keyOn = 0;            //Disable the inverter drive
-        digitalWrite(OUT10, LOW); //Red LED Off
-        digitalWrite(OUT2, LOW);  //We don't want any more smoke!
+        BMS_keyOn = 0; // Disable the inverter drive
+
+        digitalWrite(OUT2, LOW); // We don't want any more smoke!
+        if (preChargeRiseTime < 500)
+        {
+          digitalWrite(OUT10, HIGH);
+        }
+        if (preChargeRiseTime >= 500)
+        {
+          digitalWrite(OUT10, LOW); // Red LED Off
+        }
         if (timer1000_1.check() == 1)
         {
           digitalWrite(OUT11, !digitalRead(OUT11)); // Flash the Green LED
         }
         if (charger12vbattryVolts < 12.0)
         {
-          digitalWrite(OUT8, HIGH); //DC-DC Enable on (charge the aux battery as well..)
+          digitalWrite(OUT8, HIGH); // DC-DC Enable on (charge the aux battery as well..)
         }
 
         if (timer30s_1.check() == 1)
-        { //No need to keep the DC-DC on if the battery is charged
+        { // No need to keep the DC-DC on if the battery is charged
           if (charger12vCurrent < .5)
           {
             digitalWrite(OUT8, LOW);
@@ -1792,7 +1881,7 @@ void stateHandler()
         if (timer1000_1.check() == 1)
         {
           Serial.println("Waiting for BMS!");
-          BMS_keyOn = 0; //Disable the inverter drive
+          BMS_keyOn = 0; // Disable the inverter drive
         }
       }
     }
